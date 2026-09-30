@@ -1,0 +1,6 @@
+{
+  "name": "hvala.tips - Bezgotovinski bakšiš za restorane",
+  "description": "Pripremite svoj restoran ili kafić u Beogradu za milione turista tokom Expo 2027. Bezgotovinski bakšiš uz hvala.tips kockicu, terminal i QR kod.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

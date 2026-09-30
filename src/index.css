@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .perspective-1400 {
+    perspective: 1400px;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+}
+
+/* Custom radial glows and surface styling for light theme */
+.bg-mesh-glow {
+  background: radial-gradient(circle at 50% 15%, rgba(0, 186, 119, 0.08) 0%, rgba(248, 250, 252, 0) 70%);
+}
+
+.cafe-bar-surface {
+  background: linear-gradient(180deg, #e2d9cf 0%, #cfc4b6 50%, #b8ab9a 100%);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 25px 50px -12px rgba(120, 90, 60, 0.18);
+}
+
+.cafe-wood-surface {
+  background: linear-gradient(180deg, #f0eae1 0%, #e5ddd2 40%, #d4c8ba 100%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.8), 0 20px 30px -10px rgba(60, 45, 30, 0.12);
+}
+
+/* Custom light scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00BA77;
+}
