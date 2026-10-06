@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RotateCw, Smartphone, CheckCircle2, QrCode } from 'lucide-react';
+import { RotateCw, Smartphone, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import cafeBgImg from '../assets/images/belgrade_danube_cafe_1790775543068.jpg';
 
 interface TipCube3DProps {
   onDemoClick: () => void;
 }
 
-export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick }) => {
+export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick }) => {
   // 3D rotation angles
   const [rotateX, setRotateX] = useState<number>(-14);
   const [rotateY, setRotateY] = useState<number>(30);
@@ -14,7 +15,6 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [dropKey, setDropKey] = useState<number>(0);
   const [isSimulatingPhone, setIsSimulatingPhone] = useState<boolean>(false);
-  const [simulationMode, setSimulationMode] = useState<'nfc' | 'qr'>('nfc');
   const [tipSuccess, setTipSuccess] = useState<boolean>(false);
   const [selectedTip, setSelectedTip] = useState<number>(300);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,9 +26,8 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
     setTipSuccess(false);
   };
 
-  const handleTriggerSimulation = (mode: 'nfc' | 'qr') => {
+  const handleTriggerSimulation = () => {
     if (isSimulatingPhone) return;
-    setSimulationMode(mode);
     setIsSimulatingPhone(true);
     setTipSuccess(false);
 
@@ -36,11 +35,11 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
       setTipSuccess(true);
       setTimeout(() => {
         setIsSimulatingPhone(false);
-      }, 2000);
+      }, 2400);
     }, 1200);
   };
 
-  // Mouse / Touch drag to rotate
+  // Mouse drag to rotate (desktop)
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
@@ -59,30 +58,58 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
     setIsDragging(false);
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    const deltaX = e.touches[0].clientX - dragStart.x;
-    const deltaY = e.touches[0].clientY - dragStart.y;
-    setRotateY((prev) => (prev + deltaX * 0.7) % 360);
-    setRotateX((prev) => Math.max(-55, Math.min(55, prev - deltaY * 0.7)));
-    setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
   useEffect(() => {
     const handleGlobalMouseUp = () => setIsDragging(false);
     window.addEventListener('mouseup', handleGlobalMouseUp);
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
+
+  // Touch drag to rotate (mobile), wired as native listeners so touchmove can
+  // be registered non-passive. React's onTouchMove prop is passive by default,
+  // which silently breaks e.preventDefault() and lets Android scroll the page
+  // out from under the drag instead of rotating the cube.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      dragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!dragging || e.touches.length !== 1) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastX;
+      const deltaY = touch.clientY - lastY;
+      setRotateY((prev) => (prev + deltaX * 0.7) % 360);
+      setRotateX((prev) => Math.max(-55, Math.min(55, prev - deltaY * 0.7)));
+      lastX = touch.clientX;
+      lastY = touch.clientY;
+    };
+
+    const onTouchEnd = () => {
+      dragging = false;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+    };
   }, []);
 
   const cubeSize = 142; // px cube width
@@ -91,13 +118,13 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
   return (
     <div className="relative w-full max-w-[480px] mx-auto flex flex-col items-center select-none">
       {/* Visual interaction badge */}
-      <div className="w-full flex items-center justify-between mb-2 px-1 text-xs text-slate-500">
+      <div className="w-full flex items-center justify-between mb-2 px-1 text-xs text-slate-500 gap-2">
         <span className="flex items-center gap-1.5 font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-          <span className="w-2 h-2 rounded-full bg-[#00BA77] animate-pulse" />
-          hvala.tips Tip Cube na stolu kraj vode
+          <span className="w-2 h-2 rounded-full bg-[#00BA77] animate-pulse shrink-0" />
+          <span>Kubik na stolu za plaćanje telefonom</span>
         </span>
-        <span className="text-slate-500 text-[11px] hidden sm:inline">
-          Rotiraj mišem ili prstom 360°
+        <span className="flex items-center gap-1 text-emerald-700 text-[11px] font-bold shrink-0 animate-pulse">
+          Prevuci prstom <RotateCw className="w-3 h-3" />
         </span>
       </div>
 
@@ -107,42 +134,27 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className="relative w-full h-[380px] sm:h-[410px] flex items-center justify-center cursor-grab active:cursor-grabbing rounded-2xl overflow-hidden border border-slate-200/90 shadow-2xl bg-slate-100"
+        onMouseLeave={handleMouseUp}
+        className="relative w-full h-[340px] sm:h-[410px] flex items-center justify-center cursor-grab active:cursor-grabbing rounded-2xl overflow-hidden border border-slate-200/90 shadow-2xl bg-slate-100 touch-none"
         style={{ perspective: '1100px' }}
       >
         {/* Authentic Belgrade Danube Riverside Cafe Terrace Background */}
         <img
-          src="/src/assets/images/belgrade_danube_cafe_1790775543068.jpg"
+          src={cafeBgImg}
           alt="Kafić na obali Dunava u Beogradu sa pogledom na reku"
           className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
-          referrerPolicy="no-referrer"
+          draggable={false}
         />
 
         {/* Soft sunlight vignette and ambient glow */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-white/20 pointer-events-none" />
 
         {/* Riverside Location Tag */}
-        <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/60 shadow-sm pointer-events-none">
-          <div className="w-2 h-2 rounded-full bg-[#00BA77] animate-ping" />
-          <span className="text-[11px] font-bold text-slate-800 tracking-tight">
-            📍 Kafa na reci · Terasa na Dunavu, Beograd
+        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/60 shadow-sm pointer-events-none max-w-[75%]">
+          <div className="w-2 h-2 rounded-full bg-[#00BA77] animate-ping shrink-0" />
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-800 tracking-tight truncate">
+            📍 Terasa na Dunavu, Beograd
           </span>
-        </div>
-
-        {/* Realistic Cafe Table QR Sticker on the Table Surface */}
-        <div className="absolute bottom-4 right-4 z-10 pointer-events-none">
-          <div className="bg-white/95 backdrop-blur-xs border border-slate-200 shadow-lg rounded-xl p-2 flex items-center gap-2 transform rotate-2">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg p-0.5 flex items-center justify-center text-white">
-              <QrCode className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex flex-col text-left leading-tight">
-              <span className="text-[9px] font-bold text-slate-900 font-sans">hvala.tips/sto</span>
-              <span className="text-[8px] text-emerald-700 font-black">SKENIRAJ ZA BAKŠIŠ</span>
-            </div>
-          </div>
         </div>
 
         {/* Realistic Soft Cube Shadow on the Wooden Bar Counter */}
@@ -160,21 +172,21 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
           initial={{ opacity: 0, scale: 0.4 }}
           animate={{ opacity: [0, 0.8, 0], scale: [0.5, 1.6, 2.1] }}
           transition={{ duration: 0.85, delay: 0.45 }}
-          className="absolute bottom-22 w-32 h-10 rounded-full border border-emerald-500/50 pointer-events-none"
+          className="absolute bottom-[88px] w-32 h-10 rounded-full border border-emerald-500/50 pointer-events-none"
         />
 
         {/* Interactive Phone Tapping/Scanning Screen Simulation */}
         <AnimatePresence>
           {isSimulatingPhone && (
             <motion.div
-              initial={{ x: 130, y: -140, rotate: 18, opacity: 0, scale: 0.85 }}
-              animate={{ x: 25, y: -30, rotate: -4, opacity: 1, scale: 1 }}
-              exit={{ x: 130, y: -140, rotate: 18, opacity: 0, scale: 0.85 }}
+              initial={{ x: 110, y: -140, rotate: 18, opacity: 0, scale: 0.85 }}
+              animate={{ x: 20, y: -30, rotate: -4, opacity: 1, scale: 1 }}
+              exit={{ x: 110, y: -140, rotate: 18, opacity: 0, scale: 0.85 }}
               transition={{ duration: 0.55, ease: 'easeOut' }}
-              className="absolute z-30 pointer-events-none flex flex-col items-center"
+              className="absolute z-30 flex flex-col items-center"
             >
               {/* Smartphone mockup */}
-              <div className="w-44 bg-white border-4 border-slate-900 rounded-3xl shadow-2xl overflow-hidden text-slate-900 p-2.5">
+              <div className="w-40 sm:w-44 bg-white border-4 border-slate-900 rounded-3xl shadow-2xl overflow-hidden text-slate-900 p-2.5">
                 {/* Phone Speaker Notch */}
                 <div className="w-12 h-1.5 bg-slate-900 rounded-full mx-auto mb-2" />
 
@@ -202,7 +214,7 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
                           e.stopPropagation();
                           setSelectedTip(item.rsd);
                         }}
-                        className={`py-1 rounded text-[10px] font-bold border transition-colors ${
+                        className={`py-1.5 rounded text-[10px] font-bold border transition-colors ${
                           selectedTip === item.rsd
                             ? 'bg-[#00BA77] text-white border-[#00BA77]'
                             : 'bg-slate-50 border-slate-200 text-slate-700'
@@ -216,7 +228,7 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
 
                   {/* Apple Pay Button */}
                   <div className="w-full py-1.5 bg-black text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 shadow-sm">
-                    <span className="text-xs">Pay</span>
+                    <span className="text-xs">Pay</span>
                     <span>Plati {selectedTip} RSD</span>
                   </div>
                 </div>
@@ -236,10 +248,23 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
               animate={{ y: -70, opacity: 1, scale: 1 }}
               exit={{ y: -90, opacity: 0 }}
               transition={{ duration: 0.4 }}
-              className="absolute z-40 px-4 py-2.5 bg-emerald-600 text-white rounded-xl shadow-2xl flex items-center gap-2 border border-emerald-300 font-semibold text-xs tracking-wide"
+              className="absolute z-40 flex flex-col items-center gap-1.5 max-w-[85%]"
             >
-              <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
-              <span>+ {selectedTip} RSD bakšiš poslat konobaru Marku!</span>
+              <div className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl shadow-2xl flex items-center gap-2 border border-emerald-300 font-semibold text-xs tracking-wide">
+                <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+                <span>+{selectedTip} RSD bakšiš poslat konobaru!</span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDemoClick();
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 rounded-lg shadow-lg text-[11px] font-bold border border-slate-200 active:scale-95 transition-transform"
+              >
+                <span>Hoću ovo za svoj lokal</span>
+                <ArrowUpRight className="w-3 h-3" />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -277,7 +302,7 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
         >
           {/* FACE 1: FRONT (bakšiš + hvala.tips logo) */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#00BA77] via-[#00a86b] to-[#008f5a] border border-emerald-300/40 rounded-xl flex flex-col items-center justify-between p-4 text-white"
+            className="absolute -inset-px bg-gradient-to-br from-[#00BA77] via-[#00a86b] to-[#008f5a] flex flex-col items-center justify-between p-4 text-white"
             style={{
               transform: `translateZ(${halfSize}px)`,
               backfaceVisibility: 'hidden',
@@ -285,11 +310,11 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
             }}
           >
             <div className="w-full flex justify-between items-center text-[10px]">
-              <span className="font-extrabold tracking-wider">hvala.tips</span>
+              <span className="font-display font-bold tracking-wider">hvala.tips</span>
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             </div>
             <div className="text-center my-auto">
-              <span className="text-2xl font-black tracking-tight drop-shadow-sm font-sans block">
+              <span className="font-display text-2xl font-bold tracking-tight drop-shadow-sm block">
                 bakšiš
               </span>
               <span className="text-[11px] font-medium tracking-wider text-emerald-100 uppercase block mt-0.5">
@@ -303,14 +328,14 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
 
           {/* FACE 2: BACK (bakšiš) */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#008f5a] to-[#007449] border border-emerald-400/30 rounded-xl flex flex-col items-center justify-center p-4 text-white"
+            className="absolute -inset-px bg-gradient-to-br from-[#008f5a] to-[#007449] flex flex-col items-center justify-center p-4 text-white"
             style={{
               transform: `rotateY(180deg) translateZ(${halfSize}px)`,
               backfaceVisibility: 'hidden',
               boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.3)',
             }}
           >
-            <span className="text-2xl font-black tracking-tight drop-shadow-sm">
+            <span className="font-display text-2xl font-bold tracking-tight drop-shadow-sm">
               bakšiš
             </span>
             <span className="text-[10px] text-emerald-200 mt-2 font-mono">
@@ -320,14 +345,14 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
 
           {/* FACE 3: RIGHT (tips welcome) */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#00a86b] to-[#008c58] border border-emerald-300/40 rounded-xl flex flex-col items-center justify-center p-4 text-white"
+            className="absolute -inset-px bg-gradient-to-br from-[#00a86b] to-[#008c58] flex flex-col items-center justify-center p-4 text-white"
             style={{
               transform: `rotateY(90deg) translateZ(${halfSize}px)`,
               backfaceVisibility: 'hidden',
               boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.3)',
             }}
           >
-            <span className="text-2xl font-black tracking-tight drop-shadow-sm">
+            <span className="font-display text-2xl font-bold tracking-tight drop-shadow-sm">
               tips
             </span>
             <span className="text-[10px] text-emerald-100 mt-1 uppercase font-semibold tracking-wider">
@@ -337,7 +362,7 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
 
           {/* FACE 4: LEFT (NFC + hvala.tips) */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#00a86b] to-[#008c58] border border-emerald-300/30 rounded-xl flex flex-col items-center justify-center p-4 text-white"
+            className="absolute -inset-px bg-gradient-to-br from-[#00a86b] to-[#008c58] flex flex-col items-center justify-center p-4 text-white"
             style={{
               transform: `rotateY(-90deg) translateZ(${halfSize}px)`,
               backfaceVisibility: 'hidden',
@@ -350,20 +375,20 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
               <path d="M9.5 6a10 10 0 0 1 0 12" />
               <path d="M13 3.5a13.5 13.5 0 0 1 0 17" />
             </svg>
-            <span className="text-sm font-bold tracking-wider">hvala.tips</span>
+            <span className="font-display text-sm font-bold tracking-wider">hvala.tips</span>
             <span className="text-[10px] text-emerald-200 mt-1">Tap & Pay</span>
           </div>
 
-          {/* FACE 5: TOP (Exact replica of user's photo with white debossed lettering) */}
+          {/* FACE 5: TOP */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#00cc83] via-[#00BA77] to-[#00a86b] border-2 border-emerald-200/70 rounded-xl flex flex-col items-center justify-between py-3 px-2 text-white"
+            className="absolute -inset-px bg-gradient-to-br from-[#00cc83] via-[#00BA77] to-[#00a86b] flex flex-col items-center justify-between py-3 px-2 text-white"
             style={{
               transform: `rotateX(90deg) translateZ(${halfSize}px)`,
               backfaceVisibility: 'hidden',
               boxShadow: 'inset 0 3px 6px rgba(255,255,255,0.6), inset 0 -2px 4px rgba(0,0,0,0.2)',
             }}
           >
-            <span className="text-lg font-black tracking-tight drop-shadow font-sans">
+            <span className="font-display text-lg font-bold tracking-tight drop-shadow">
               bakšiš
             </span>
 
@@ -379,14 +404,14 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
               </span>
             </div>
 
-            <span className="text-xs font-bold tracking-wider drop-shadow font-sans text-white/95">
+            <span className="text-xs font-bold tracking-wider drop-shadow text-white/95">
               tips welcome
             </span>
           </div>
 
           {/* FACE 6: BOTTOM (Silicone Base) */}
           <div
-            className="absolute inset-0 bg-[#00603c] rounded-xl flex flex-col items-center justify-center p-3 text-emerald-300"
+            className="absolute -inset-px bg-[#00603c] flex flex-col items-center justify-center p-3 text-emerald-300"
             style={{
               transform: `rotateX(-90deg) translateZ(${halfSize}px)`,
               backfaceVisibility: 'hidden',
@@ -399,21 +424,23 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
         </motion.div>
       </div>
 
-      {/* Interactive Controls Bar: Simulating NFC Tap and Table QR Scan */}
+      {/* Interactive Controls Bar */}
       <div className="w-full mt-3 flex items-center justify-between gap-2">
         <button
-          onClick={() => handleTriggerSimulation('nfc')}
+          onClick={handleTriggerSimulation}
           type="button"
-          className="flex-1 py-2 px-2.5 bg-white hover:bg-emerald-50 text-slate-800 hover:text-emerald-700 text-xs font-bold rounded-lg border border-slate-200 hover:border-emerald-300 transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95"
+          className={`flex-1 py-2.5 px-2.5 bg-[#00BA77] hover:bg-[#00c982] text-slate-950 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 ${
+            isSimulatingPhone ? '' : 'cta-pulse'
+          }`}
         >
-          <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Probaj prislanjanje telefona</span>
+          <Smartphone className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+          <span>Klikni ovde da probaš</span>
         </button>
 
         <button
           onClick={handleDropAgain}
           type="button"
-          className="py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-all flex items-center justify-center gap-1 shadow-xs active:scale-95"
+          className="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-all flex items-center justify-center gap-1 shadow-xs active:scale-95"
           title="Baci kockicu ponovo"
         >
           <RotateCw className="w-3.5 h-3.5 text-slate-600" />
@@ -423,7 +450,7 @@ export const TipCube3D: React.FC<TipCube3DProps> = ({ onDemoClick: _onDemoClick 
 
       {/* Real product explanation */}
       <p className="mt-2 text-[11px] text-slate-500 text-center">
-        Kompaktan stoni kubik za šank i stolove · Nema kablova · Gosti plaćaju za 3 sekunde
+        Kompaktan kubik za šank i stolove · Bez kablova · Gost plaća za 3 sekunde
       </p>
     </div>
   );
